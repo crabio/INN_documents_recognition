@@ -160,6 +160,36 @@ def find_digit_inside_frame(img):
     return digit_frame_inv
 
 
+# Calculate checksum from INN and validate INN number
+# 1 - error inn len, 2 - error checksum
+def check_inn(inn_numbers_list):
+    normal_inn_len = 12
+    inn_muxes_1_list = np.array((7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
+    inn_muxes_2_list = np.array((3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8 ))
+    if len(inn_numbers_list) != normal_inn_len:
+        return 1
+    else:
+        # Get first 10 digits and convert to numpy array
+        # Mux each digit to specific number
+        mux_1_result = np.sum(np.multiply(np.array(inn_numbers_list[:10]), inn_muxes_1_list))
+        # Calc first checksum number
+        inn_1_checksum = mux_1_result - (mux_1_result // 11 * 11)
+        if inn_1_checksum == 10:
+            inn_1_checksum = 0
+        # Get first 11 digits and convert to numpy array
+        # Mux each digit to specific number
+        mux_2_result = np.sum(np.multiply(np.array(inn_numbers_list[:11]), inn_muxes_2_list))
+        # Calc second checksum number
+        inn_2_checksum = mux_2_result - (mux_2_result // 11 * 11)
+        if inn_2_checksum == 10:
+            inn_2_checksum = 0
+
+        if inn_numbers_list[10] == inn_1_checksum and inn_numbers_list[11] == inn_2_checksum:
+            return 0
+        else:
+            return 2
+
+
 # load classifier
 classifier = load_network_config()
 
@@ -194,35 +224,6 @@ for digit_frame in digit_frame_list:
 
     # plt.imshow(digit_img, cmap='gray')
     # plt.show()
-
-# Calculate checksum from INN and validate INN number
-# 1 - error inn len, 2 - error checksum
-def check_inn(inn_numbers_list):
-    normal_inn_len = 12
-    inn_muxes_1_list = np.array((7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
-    inn_muxes_2_list = np.array((3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8 ))
-    if len(inn_numbers_list) != normal_inn_len:
-        return 1
-    else:
-        # Get first 10 digits and convert to numpy array
-        # Mux each digit to specific number
-        mux_1_result = np.sum(np.multiply(np.array(inn_numbers_list[:10]), inn_muxes_1_list))
-        # Calc first checksum number
-        inn_1_checksum = mux_1_result - (mux_1_result // 11 * 11)
-        if inn_1_checksum == 10:
-            inn_1_checksum = 0
-        # Get first 11 digits and convert to numpy array
-        # Mux each digit to specific number
-        mux_2_result = np.sum(np.multiply(np.array(inn_numbers_list[:11]), inn_muxes_2_list))
-        # Calc second checksum number
-        inn_2_checksum = mux_2_result - (mux_2_result // 11 * 11)
-        if inn_2_checksum == 10:
-            inn_2_checksum = 0
-
-        if inn_numbers_list[10] == inn_1_checksum and inn_numbers_list[11] == inn_2_checksum:
-            return 0
-        else:
-            return 2
 
 # validate INN status
 check_status = check_inn(inn_numbers_list)
