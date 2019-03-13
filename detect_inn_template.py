@@ -5,22 +5,23 @@ from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D
 import tensorflow as tf
 
-
+# Crop input image by rect [x1,y1, x2,y2]
 def crop_image_by_rect(image, rect):
     return image[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]]
 
-
+# Crop input image by 2 corners coordinates [x1,y1] [x2,y2]
 def crop_image_by_2_corners(image, top_left, bottom_right):
     return image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
 
-
+# Basically crop by 4 points
 def crop_image_by_4_corners(image, corners):
     top_left = tuple(corners[0][0])
     bottom_right = tuple(corners[2][0])
 
     return crop_image_by_2_corners(image, top_left, bottom_right)
 
-
+# Prepare input image for recognition
+# In this function on image performed threshold for filtering noise
 def prepare_image(image, threshold_level, inverse=False):
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -32,7 +33,7 @@ def prepare_image(image, threshold_level, inverse=False):
 
     return thresh_bin
 
-
+# Function find pattern of INN frame on input image
 def find_inn_text(image):
     template = cv2.imread('templates/inn.png')
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -49,7 +50,7 @@ def find_inn_text(image):
 
     return top_left, bottom_right, probability
 
-
+# Get INN frame from image by 2 points (crop image)
 def get_inn_number_frame(image, inn_top_left, inn_bottom_right):
     inn_frame_shape = (1100, 110)
 
@@ -60,7 +61,7 @@ def get_inn_number_frame(image, inn_top_left, inn_bottom_right):
 
     return crop_image_by_2_corners(image, frame_top_left, frame_bottom_right)
 
-
+# Load pretrained neural network config
 def load_network_config():
     input_shape = (28, 28, 1)
 
@@ -85,7 +86,7 @@ def load_network_config():
 
     return model
 
-
+# Perform neural network for prediction of number on subframe of INN frame
 def network_recognize_digit(model, image):
     image_gray_resized = cv2.bitwise_not(cv2.resize(image, (28, 28), interpolation=cv2.INTER_AREA))
     image_gray_delated = cv2.dilate(image_gray_resized, (3, 3))
@@ -99,7 +100,7 @@ def network_recognize_digit(model, image):
 
     return pred.round(decimals=4)[0][pred.argmax()], pred.argmax()
 
-
+# Find one digit subframe on INN frame
 def find_digit_frames(img):
     img_thresh = prepare_image(img, 200)
 
@@ -126,7 +127,8 @@ def find_digit_frames(img):
 
     return reversed(digit_frame_list)
 
-
+# Crop digit subframe near frame to loose empty space and
+# align proportions of croped images for neural network input
 def find_digit_inside_frame(img):
     img_thresh = prepare_image(img, 127, inverse=True)
 
@@ -158,21 +160,26 @@ def find_digit_inside_frame(img):
     return digit_frame_inv
 
 
+# load classifier
 classifier = load_network_config()
 
+# read image
 img_rgb = cv2.imread('image/inn-1.jpg')
 
+# cleare the image
 img_thresh = prepare_image(img_rgb, 200)
 
+# find INN text for getting INN frame
 inn_top_left, inn_bottom_right, inn_probability = find_inn_text(img_thresh)
 
-inn_robability = inn_probability
-
+# Get INN nu,ber plate righter from text frame
 inn_number_frame = get_inn_number_frame(img_rgb, inn_top_left, inn_bottom_right)
 
+# Show INN nu,ber plate for checking
 plt.imshow(inn_number_frame, cmap='gray')
 plt.show()
 
+# Get all digit frames from INN nu,ber plate
 digit_frame_list = find_digit_frames(inn_number_frame)
 
 inn_numbers_list = []
@@ -188,6 +195,7 @@ for digit_frame in digit_frame_list:
     # plt.imshow(digit_img, cmap='gray')
     # plt.show()
 
+# Calculate checksum from INN and validate INN number
 # 1 - error inn len, 2 - error checksum
 def check_inn(inn_numbers_list):
     normal_inn_len = 12
@@ -216,8 +224,10 @@ def check_inn(inn_numbers_list):
         else:
             return 2
 
+# validate INN status
 check_status = check_inn(inn_numbers_list)
 
+# General script output
 if check_status == 0:
     print(inn_probability, ''.join(str(e) for e in inn_numbers_list))
 elif check_status == 1:
